@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { runBullAgent, runBearAgent, runMacroAgent, runJudgeAgent } from "@/lib/agents"
 import { getMarketData, formatMarketContext } from "@/lib/marketData"
+import { getFearGreedIndex, getNewsHeadlines, formatNewsContext } from "@/lib/marketEnrichment"
 
 const ASSET_REGEX = /^[A-Z0-9\-]{1,20}$/
 
@@ -19,7 +20,18 @@ export async function POST(req: NextRequest) {
 
     // Fetch live market data (CoinGecko for crypto, Alpha Vantage for stocks)
     const marketData = await getMarketData(symbol)
-    const marketContext = formatMarketContext(marketData, symbol)
+
+    // Fetch enrichment data in parallel — all optional, failures return null/[]
+    const [fearGreed, headlines] = await Promise.all([
+      getFearGreedIndex(),
+      getNewsHeadlines(symbol, marketData?.type ?? "stock"),
+    ])
+
+    // Build enriched market context string for AI agents
+    const marketContext =
+      formatMarketContext(marketData, symbol) +
+      (fearGreed ? ` | Fear & Greed: ${fearGreed.value}/100 (${fearGreed.classification})` : "") +
+      formatNewsContext(headlines)
 
     // Run 3 analyst agents in parallel
     const [bull, bear, macro] = await Promise.all([
@@ -34,6 +46,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       asset: symbol,
       marketData,
+      fearGreed,
+      headlines,
       marketContext,
       bull,
       bear,

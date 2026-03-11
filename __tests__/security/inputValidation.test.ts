@@ -62,9 +62,16 @@ describe("Input validation", () => {
   })
 
   it("accepts valid crypto symbol BTC", async () => {
-    // Mock CoinGecko + 4 Gemini calls
+    // Order of fetch calls (sequential within getMarketData, then parallel enrichment):
+    // 1. CoinGecko simple/price   2. CoinGecko market_chart (sequential, after price ok)
+    // 3. Fear & Greed             4. CryptoPanic news (parallel)
+    // 5. Gemini bull  6. Gemini bear  7. Gemini macro (parallel)
+    // 8. Gemini judge
     mockFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ bitcoin: { usd: 95000, usd_24h_change: 2.5, usd_market_cap: 1e12, usd_24h_vol: 3e10 } }) })
+      .mockResolvedValueOnce({ ok: false }) // market_chart — graceful null
+      .mockResolvedValueOnce({ ok: false }) // Fear & Greed — graceful null
+      .mockResolvedValueOnce({ ok: false }) // CryptoPanic — graceful []
       .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "• Bull arg" }] } }] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "• Bear arg" }] } }] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "• Macro arg" }] } }] }) })
@@ -74,7 +81,11 @@ describe("Input validation", () => {
   })
 
   it("accepts valid stock symbol AAPL", async () => {
+    // No ALPHA_VANTAGE_API_KEY → getMarketData returns fallback immediately (no market data fetch)
+    // Order: 1. Fear & Greed  (no news fetch — no AV key)
+    //        2. Gemini bull  3. Gemini bear  4. Gemini macro  5. Gemini judge
     mockFetch
+      .mockResolvedValueOnce({ ok: false }) // Fear & Greed — graceful null
       .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "• Bull arg" }] } }] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "• Bear arg" }] } }] }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: "• Macro arg" }] } }] }) })
@@ -86,8 +97,12 @@ describe("Input validation", () => {
 
 describe("Error message security", () => {
   it("does not expose internal Gemini error details in response", async () => {
+    // BTC: price fetch ok but coin missing → getMarketData returns null (no history fetch)
+    // Then enrichment: Fear & Greed fetch (type defaults to "stock" → no AV key → no news fetch)
+    // Then 3 Gemini agents all fail
     mockFetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) // CoinGecko returns null
+      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) // CoinGecko price — coin missing → null
+      .mockResolvedValueOnce({ ok: false }) // Fear & Greed — graceful null
       .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "INTERNAL_SECRET_ERROR" })
       .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "INTERNAL_SECRET_ERROR" })
       .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "INTERNAL_SECRET_ERROR" })

@@ -1,16 +1,17 @@
 
-const GEMINI_MODEL = "gemini-2.5-flash-lite"
+const AGENT_MODEL = "gemini-2.5-flash-lite"  // bullet points — lite stačí, 30 RPM
+const JUDGE_MODEL = "gemini-2.5-flash"        // final verdict — lepší reasoning, 5 RPM (1 call/analýza)
 const API_BASE = "https://generativelanguage.googleapis.com/v1"
 
-async function geminiRequest(prompt: string, temperature: number, jsonMode = false): Promise<string> {
+async function geminiRequest(prompt: string, temperature: number, jsonMode = false, model = AGENT_MODEL): Promise<string> {
   const key = process.env.GEMINI_API_KEY
   if (!key) throw new Error("GEMINI_API_KEY není nastaven v .env.local")
-  const url = `${API_BASE}/models/${GEMINI_MODEL}:generateContent?key=${key}`
+  const url = `${API_BASE}/models/${model}:generateContent?key=${key}`
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: {
       temperature,
-      maxOutputTokens: jsonMode ? 512 : 600,
+      maxOutputTokens: jsonMode ? 1024 : 1200,
     },
   }
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) })
@@ -19,7 +20,10 @@ async function geminiRequest(prompt: string, temperature: number, jsonMode = fal
     throw new Error(`Gemini API error ${res.status}: ${err}`)
   }
   const data = await res.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? ""
+  // gemini-2.5-flash is a thinking model — parts[0] may be reasoning, parts[last] is the actual output
+  const parts: { text?: string; thought?: boolean }[] = data.candidates?.[0]?.content?.parts ?? []
+  const outputPart = parts.filter(p => !p.thought).pop()
+  return outputPart?.text?.trim() ?? ""
 }
 
 export interface JudgeVerdict {
@@ -92,7 +96,7 @@ export async function runJudgeAgent(
   bear: string,
   macro: string
 ): Promise<JudgeVerdict> {
-  const prompt = `You are an unbiased senior portfolio manager synthesizing a multi-agent debate about ${asset}.
+  const prompt = `You are a seasoned CFA-level portfolio manager and risk analyst making a final investment decision on ${asset}. Three specialist analysts have debated this asset.
 
 BULL ANALYST ARGUMENTS:
 ${bull}
@@ -103,19 +107,26 @@ ${bear}
 MACRO ANALYST FACTORS:
 ${macro}
 
-Synthesize all arguments objectively. Output ONLY valid JSON matching this exact schema:
+Your task: Apply rigorous multi-factor reasoning to synthesize these arguments into a final verdict.
+- Weigh argument quality, not just quantity — one strong bear arg can outweigh three weak bull args
+- Consider asymmetric risk/reward — downside protection matters as much as upside potential
+- Account for macro context — macro factors can amplify or negate asset-specific arguments
+- Be decisive: avoid defaulting to HOLD unless genuinely balanced
+- bullScore + bearScore do NOT need to sum to 100 — they represent independent conviction levels
+
+Output ONLY valid JSON matching this exact schema (no markdown, no explanation):
 {
-  "bullScore": <integer 0-100, overall bullish conviction>,
-  "bearScore": <integer 0-100, overall bearish conviction>,
+  "bullScore": <integer 0-100, independent bullish conviction strength>,
+  "bearScore": <integer 0-100, independent bearish conviction strength>,
   "signal": <"STRONG BUY" | "BUY" | "HOLD" | "SELL" | "STRONG SELL">,
   "confidence": <"LOW" | "MEDIUM" | "HIGH">,
-  "verdict": "<2-3 sentence balanced synthesis of the debate>",
-  "strongestBullArg": "<single strongest bull argument in one sentence>",
-  "strongestBearArg": "<single strongest bear argument in one sentence>",
-  "priceTarget": "<rough 30-day outlook, e.g. '+12% to $108,000' or '-8% to $88,000'>"
+  "verdict": "<3-4 sentence rigorous synthesis explaining the key trade-offs and why this signal was chosen>",
+  "strongestBullArg": "<the single most compelling bull argument with specific reasoning>",
+  "strongestBearArg": "<the single most compelling bear argument with specific reasoning>",
+  "priceTarget": "<data-driven 30-day price outlook with reasoning, e.g. '+12% to $108,000 if momentum holds' or '-8% to $88,000 if macro headwinds persist'>"
 }`
 
-  const text = await geminiRequest(prompt, 0.3, true)
+  const text = await geminiRequest(prompt, 0.3, true, JUDGE_MODEL)
 
   let parsed: unknown
   try {

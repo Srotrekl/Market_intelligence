@@ -5,11 +5,14 @@ import { JudgeVerdict } from "@/components/JudgeVerdict"
 import { AssetSelector } from "@/components/AssetSelector"
 import { AnalysisHistory, type HistoryEntry } from "@/components/AnalysisHistory"
 import type { MarketData } from "@/lib/marketData"
+import type { FearGreedData } from "@/lib/marketEnrichment"
 import type { JudgeVerdict as Verdict } from "@/lib/agents"
 
 interface Analysis {
   asset: string
   marketData: MarketData | null
+  fearGreed: FearGreedData | null
+  headlines: string[]
   marketContext: string
   bull: string
   bear: string
@@ -27,6 +30,14 @@ const STAGES = [
   "Judge Agent synthesizing verdict ⚖️",
   "Finalizing analysis...",
 ]
+
+function fngColor(value: number): string {
+  if (value <= 25) return "bg-bear/20 text-bear border-bear/40"
+  if (value <= 45) return "bg-orange-500/20 text-orange-400 border-orange-500/40"
+  if (value <= 55) return "bg-judge/20 text-judge border-judge/40"
+  if (value <= 75) return "bg-bull/10 text-bull/80 border-bull/30"
+  return "bg-bull/20 text-bull border-bull/40"
+}
 
 export default function HomePage() {
   const [selected, setSelected] = useState("BTC")
@@ -98,7 +109,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-judge font-bold text-sm tracking-widest">⚡ MARKET INTELLIGENCE AGENT</span>
-            <span className="text-dim text-xs hidden sm:block">v1.0 · Powered by Google Gemini</span>
+            <span className="text-dim text-xs hidden sm:block">v1.1 · Powered by Google Gemini</span>
           </div>
           <div className="flex items-center gap-4 text-xs">
             {result?.marketData && result.marketData.price > 0 && (
@@ -180,6 +191,22 @@ export default function HomePage() {
                     <span className={changeColor}>{result.marketData.change24h >= 0 ? "+" : ""}{result.marketData.change24h.toFixed(2)}%</span>
                   </div>
                 )}
+                {result.marketData.change7d != null && (
+                  <div>
+                    <span className="text-muted">7D </span>
+                    <span className={result.marketData.change7d >= 0 ? "text-bull" : "text-bear"}>
+                      {result.marketData.change7d >= 0 ? "+" : ""}{result.marketData.change7d.toFixed(2)}%
+                    </span>
+                  </div>
+                )}
+                {result.marketData.change30d != null && (
+                  <div>
+                    <span className="text-muted">30D </span>
+                    <span className={result.marketData.change30d >= 0 ? "text-bull" : "text-bear"}>
+                      {result.marketData.change30d >= 0 ? "+" : ""}{result.marketData.change30d.toFixed(2)}%
+                    </span>
+                  </div>
+                )}
                 {result.marketData.marketCap && (
                   <div>
                     <span className="text-muted">MCAP </span>
@@ -190,6 +217,14 @@ export default function HomePage() {
                   <div>
                     <span className="text-muted">VOL </span>
                     <span className="text-gray-200">${(result.marketData.volume24h / 1e9).toFixed(2)}B</span>
+                  </div>
+                )}
+                {result.fearGreed && (
+                  <div>
+                    <span className="text-muted">F&G </span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-bold border ${fngColor(result.fearGreed.value)}`}>
+                      {result.fearGreed.value} {result.fearGreed.classification.toUpperCase()}
+                    </span>
                   </div>
                 )}
                 <div className="ml-auto text-dim">{new Date(result.timestamp).toLocaleTimeString()}</div>
@@ -226,7 +261,7 @@ export default function HomePage() {
         <p className="text-xs text-dim">
           ⚠️ NOT FINANCIAL ADVICE — FOR EDUCATIONAL PURPOSES ONLY ·
           AI analysis may be inaccurate · Always do your own research ·
-          Powered by <span className="text-judge">Google Gemini 1.5 Flash</span> (Free)
+          Powered by <span className="text-judge">Google Gemini 2.5 Flash</span> (Free)
         </p>
       </footer>
     </div>
