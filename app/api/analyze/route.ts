@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     ])
 
     // Judge synthesizes after all 3 are done
-    const verdict = await runJudgeAgent(symbol, bull, bear, macro)
+    const verdict = await runJudgeAgent(symbol, bull, bear, macro, marketData?.price ?? undefined)
 
     return NextResponse.json({
       asset: symbol,

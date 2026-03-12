@@ -94,9 +94,13 @@ export async function runJudgeAgent(
   asset: string,
   bull: string,
   bear: string,
-  macro: string
+  macro: string,
+  currentPrice?: number
 ): Promise<JudgeVerdict> {
-  const prompt = `You are a seasoned CFA-level portfolio manager and risk analyst making a final investment decision on ${asset}. Three specialist analysts have debated this asset.
+  const priceContext = currentPrice ? `\nCURRENT PRICE: $${currentPrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} — use this exact price as the base for your priceTarget calculation.` : ""
+  const prompt = `You are a seasoned CFA-level portfolio manager and risk analyst making a final investment decision on ${asset}.${priceContext}
+
+Three specialist analysts have debated this asset.
 
 BULL ANALYST ARGUMENTS:
 ${bull}
