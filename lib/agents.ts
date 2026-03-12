@@ -1,6 +1,6 @@
 
 const AGENT_MODEL = "gemini-2.5-flash-lite"  // bullet points — lite stačí, 30 RPM
-const JUDGE_MODEL = "gemini-2.5-flash"        // final verdict — lepší reasoning, 5 RPM (1 call/analýza)
+const JUDGE_MODEL = "gemini-2.5-flash-lite"  // final verdict — spolehlivý, 30 RPM
 const API_BASE = "https://generativelanguage.googleapis.com/v1"
 
 async function geminiRequest(prompt: string, temperature: number, jsonMode = false, model = AGENT_MODEL): Promise<string> {
