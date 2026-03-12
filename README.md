@@ -2,6 +2,13 @@
 
 Multi-agent AI market analysis dashboard. 3 AI analysts debate in parallel — Bull vs Bear vs Macro — then a Judge synthesizes a probability score.
 
+<img width="1282" height="1310" alt="Dashboard" src="https://github.com/user-attachments/assets/1873b1be-36a9-42df-a006-07b368c4ad7a" />
+
+<img width="1291" height="1215" alt="Analysis" src="https://github.com/user-attachments/assets/f43c4038-5b74-4164-ad53-c1a1e32f0cfa" />
+
+<img width="1352" height="878" alt="Judge_verdict" src="https://github.com/user-attachments/assets/a073d104-492d-4ee2-abf3-b09ce3c455bd" />
+
+
 **Celý stack je ZDARMA.**
 
 ---
