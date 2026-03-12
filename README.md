@@ -7,7 +7,7 @@ Multi-agent AI market analysis dashboard. 3 AI analysts debate in parallel — B
 <img width="1291" height="1215" alt="Analysis" src="https://github.com/user-attachments/assets/f43c4038-5b74-4164-ad53-c1a1e32f0cfa" />
 
 <img width="1352" height="878" alt="Judge_verdict" src="https://github.com/user-attachments/assets/a073d104-492d-4ee2-abf3-b09ce3c455bd" />
-
+## Live Demo 🔗 [market-intelligence-opal.vercel.app](https://market-intelligence-opal.vercel.app)
 
 **Celý stack je ZDARMA.**
 
